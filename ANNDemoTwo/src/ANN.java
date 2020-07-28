@@ -24,7 +24,7 @@ public class ANN {
 	// initializing the layers
 	int inputLayerSize, hiddenLayerOneSize, hiddenLayerTwoSize, outputLayerSize;
 	// initializing the biases
-	double[] biasesLayerOne, biasesLayerTwo, biasesOutputLayer;
+	double bias = 1.0;
 	// initializing the weights
 	double[][] weightsAfterInputLayer, weightsAfterLayerOne, weightsAfterLayerTwo;
 	// initializing the nodes
@@ -50,7 +50,7 @@ public class ANN {
 	// private methods for changing the layers
 	private void changeInputLayerSize(int newInputLayerSize) {
 		if (newInputLayerSize <= 0) {
-			throw new ArithmeticException("layers must have more than one node");
+			throw new ArithmeticException("layers must have at least one node");
 		} else {
 			inputLayerSize = newInputLayerSize;
 		}
@@ -58,7 +58,7 @@ public class ANN {
 
 	private void changeHiddenLayerOneSize(int newHiddenLayerOneSize) {
 		if (newHiddenLayerOneSize <= 0) {
-			throw new ArithmeticException("layers must have more than one node");
+			throw new ArithmeticException("layers must have at least one node");
 		} else {
 			hiddenLayerOneSize = newHiddenLayerOneSize;
 		}
@@ -66,7 +66,7 @@ public class ANN {
 
 	private void changeHiddenLayerTwoSize(int newHiddenLayerTwoSize) {
 		if (newHiddenLayerTwoSize <= 0) {
-			throw new ArithmeticException("layers must have more than one node");
+			throw new ArithmeticException("layers must have at least one node");
 		} else {
 			hiddenLayerTwoSize = newHiddenLayerTwoSize;
 		}
@@ -74,7 +74,7 @@ public class ANN {
 
 	private void changeOutputLayerSize(int newOutputLayerSize) {
 		if (newOutputLayerSize <= 0) {
-			throw new ArithmeticException("layers must have more than one node");
+			throw new ArithmeticException("layers must have at least one node");
 		} else {
 			outputLayerSize = newOutputLayerSize;
 		}
@@ -91,15 +91,19 @@ public class ANN {
 		}
 	}
 
-	// the instance of the Random class we will be using to initialize the ANN
-	Random rand = new Random();
+	// a private method to handle randomly generating doubles on the interval [0.0,
+	// 1.0]
+	private static double getRandomDouble() {
+		Random rand = new Random();
+		return rand.nextDouble();
+	}
 
 	// to randomize the values in an array between 0 and 1 (used for the biases
 	// arrays)
-	private void randomizeOneDimensionalArr(double[] arr) {
+	private static void randomizeOneDimensionalArr(double[] arr) {
 		for (int i = 0; i < arr.length; i++) {
 			// generates a double on the interval [0.0, 1.0]
-			arr[i] = rand.nextDouble();
+			arr[i] = getRandomDouble();
 
 			/*
 			 * turns the double into a negative 50% of the time
@@ -107,23 +111,30 @@ public class ANN {
 			 * so now the double will be somewhere on the interval [-1.0, 1.0] instead of
 			 * the interval [0.0, 1.0]
 			 */
-			if (rand.nextBoolean()) {
+			double x = getRandomDouble();
+			if (x > 0.5) {
 				arr[i] *= -1;
 			}
 		}
 	}
 
-	private void randomizeTwoDimensionalArr(double[][] arr) {
+	private static void randomizeTwoDimensionalArr(double[][] arr) {
 		for (int i = 0; i < arr.length; i++) {
 			for (int j = 0; j < arr[i].length; j++) {
-				arr[i][j] = rand.nextDouble();
+				arr[i][j] = getRandomDouble();
 				/*
 				 * turns the double into a negative 50% of the time
 				 * 
 				 * so now the double will be somewhere on the interval [-1.0, 1.0] instead of
 				 * the interval [0.0, 1.0]
+				 * 
+				 * for some reason, evaluating random functions in the if() statement or using
+				 * the boolean random functions will always return a value of "true". To get
+				 * around this, a random double is generated and stored and then that value is
+				 * checked to see if it's greater than 0.5 instead of using a random boolean
 				 */
-				if (rand.nextBoolean()) {
+				double x = getRandomDouble();
+				if (x > 0.5) {
 					arr[i][j] *= -1;
 				}
 			}
@@ -157,6 +168,9 @@ public class ANN {
 
 	// a method for saving all the ANN data (writing it to the files)
 	public void save(String saveFolder) throws IOException {
+		System.out.println(
+				"=========================================================================================================================================================");
+
 		// write all the values for the settings to the settings.txt file
 		PrintStream writer = fileWriter(saveFolder + "settings.txt");
 		writer.println(String.valueOf(inputLayerSize));
@@ -169,83 +183,70 @@ public class ANN {
 		writer.println(String.valueOf(max));
 		writer.close();
 
-		// write all the values for the biases for the layers
-		writer = fileWriter(saveFolder + "biasesLayerOne.txt");
-		for (int i = 0; i < hiddenLayerOneSize; i++) {
-			writer.println(String.valueOf(biasesLayerOne[i]));
-		}
-		writer.close();
-		writer = fileWriter(saveFolder + "biasesLayerTwo.txt");
-		for (int i = 0; i < hiddenLayerTwoSize; i++) {
-			writer.println(String.valueOf(biasesLayerTwo[i]));
-		}
-		writer.close();
-		writer = fileWriter(saveFolder + "biasesOutputLayer.txt");
-		for (int i = 0; i < outputLayerSize; i++) {
-			writer.println(String.valueOf(biasesOutputLayer[i]));
-		}
-		writer.close();
-
 		// write all the values for the weights for the layers
 		writer = fileWriter(saveFolder + "weightsAfterInputLayer.txt");
-		for (int i = 0; i < inputLayerSize; i++) {
+		for (int i = 0; i < inputLayerSize + 1; i++) {
 			for (int j = 0; j < hiddenLayerOneSize; j++) {
 				writer.println(String.valueOf(weightsAfterInputLayer[i][j]));
 			}
 		}
 		writer.close();
 		writer = fileWriter(saveFolder + "weightsAfterLayerOne.txt");
-		for (int i = 0; i < hiddenLayerOneSize; i++) {
+		for (int i = 0; i < hiddenLayerOneSize + 1; i++) {
 			for (int j = 0; j < hiddenLayerTwoSize; j++) {
 				writer.println(String.valueOf(weightsAfterLayerOne[i][j]));
 			}
 		}
 		writer.close();
 		writer = fileWriter(saveFolder + "weightsAfterLayerTwo.txt");
-		for (int i = 0; i < hiddenLayerTwoSize; i++) {
+		for (int i = 0; i < hiddenLayerTwoSize + 1; i++) {
 			for (int j = 0; j < outputLayerSize; j++) {
 				writer.println(String.valueOf(weightsAfterLayerTwo[i][j]));
 			}
 		}
 		writer.close();
+
+		System.out.println(
+				"=========================================================================================================================================================");
 	}
 
-	public ANN(int inputLayerSize, int hiddenLayerOneSize, int hiddenLayerTwoSize, int outputLayerSize, double min,
-			double max, boolean readValuesFromSaveFiles, String saveFolder) {
+	public ANN(int inputLayerSizeFromClient, int hiddenLayerOneSizeFromClient, int hiddenLayerTwoSizeFromClient,
+			int outputLayerSizeFromClient, double minFromClient, double maxFromClient, boolean readValuesFromSaveFiles,
+			String saveFolder) {
 		// if we want to read the ANN from the save files (for the settings)
 		if (readValuesFromSaveFiles) {
 			// reading the settings
 			Scanner fileScanner1 = fileOpener(saveFolder + "settings.txt");
-			inputLayerSize = Integer.parseInt(fileScanner1.nextLine());
-			hiddenLayerOneSize = Integer.parseInt(fileScanner1.nextLine());
-			hiddenLayerTwoSize = Integer.parseInt(fileScanner1.nextLine());
-			outputLayerSize = Integer.parseInt(fileScanner1.nextLine());
-			min = Double.parseDouble(fileScanner1.nextLine());
-			max = Double.parseDouble(fileScanner1.nextLine());
-			min = Double.parseDouble(fileScanner1.nextLine());
-			max = Double.parseDouble(fileScanner1.nextLine());
+			this.inputLayerSize = Integer.parseInt(fileScanner1.nextLine());
+			this.hiddenLayerOneSize = Integer.parseInt(fileScanner1.nextLine());
+			this.hiddenLayerTwoSize = Integer.parseInt(fileScanner1.nextLine());
+			this.outputLayerSize = Integer.parseInt(fileScanner1.nextLine());
+			this.min = Double.parseDouble(fileScanner1.nextLine());
+			this.max = Double.parseDouble(fileScanner1.nextLine());
 			fileScanner1.close();
+		} else {
+			// changes the min and max for normalization and denormalization
+			changeParameters(minFromClient, maxFromClient);
 		}
 		// calls all the methods for changing the size of the layers. They will throw
 		// exceptions if illegal values are attempted
-		changeInputLayerSize(inputLayerSize);
-		changeHiddenLayerOneSize(hiddenLayerOneSize);
-		changeHiddenLayerTwoSize(hiddenLayerTwoSize);
-		changeOutputLayerSize(outputLayerSize);
+		changeInputLayerSize(inputLayerSizeFromClient);
+		changeHiddenLayerOneSize(hiddenLayerOneSizeFromClient);
+		changeHiddenLayerTwoSize(hiddenLayerTwoSizeFromClient);
+		changeOutputLayerSize(outputLayerSizeFromClient);
 
-		// initializing all the biases (they were already initialized as
-		// variables above, but now we are assigning them a length and thus a slot in
-		// memory)
-		biasesLayerOne = new double[hiddenLayerOneSize];
-		biasesLayerTwo = new double[hiddenLayerTwoSize];
-		biasesOutputLayer = new double[outputLayerSize];
-
-		// initializing all the weights (they were already initialized
-		// as variables above, but now we are assigning them a length and thus a slot in
-		// memory)
-		weightsAfterInputLayer = new double[inputLayerSize][hiddenLayerOneSize];
-		weightsAfterLayerOne = new double[hiddenLayerOneSize][hiddenLayerTwoSize];
-		weightsAfterLayerTwo = new double[hiddenLayerTwoSize][outputLayerSize];
+		/*
+		 * initializing all the weights (they were already initialized as variables
+		 * above, but now we are assigning them a length and thus a slot in memory)
+		 * 
+		 * "+ 1" is added to each first index of the weight arrays to make room for a
+		 * node to represent the biases (but since the biases will not get input as part
+		 * of their calculation, the second index of the weight arrays needn't contain a
+		 * slot for the biases)
+		 */
+		this.weightsAfterInputLayer = new double[this.inputLayerSize + 1][this.hiddenLayerOneSize];
+		this.weightsAfterLayerOne = new double[this.hiddenLayerOneSize + 1][this.hiddenLayerTwoSize];
+		this.weightsAfterLayerTwo = new double[this.hiddenLayerTwoSize + 1][this.outputLayerSize];
 
 		/*
 		 * initializing all the nodes the nodes are the parts of each layer that will
@@ -257,70 +258,42 @@ public class ANN {
 		 * be a result of the calculation (so a blank output layer will be passed in by
 		 * the user and the actual outputs will be returned)
 		 */
-		hiddenLayerOneNodes = new double[hiddenLayerOneSize];
-		hiddenLayerTwoNodes = new double[hiddenLayerTwoSize];
-
-		// changes the min and max for normalization and denormalization
-		changeParameters(min, max);
+		this.hiddenLayerOneNodes = new double[this.hiddenLayerOneSize];
+		this.hiddenLayerTwoNodes = new double[this.hiddenLayerTwoSize];
 
 		// if we want to read the ANN from the save files (for the weights and biases)
 		if (readValuesFromSaveFiles) {
 			// the scanner
-			// initialize the scanner and read values for biasesLayerOne[]
-			Scanner fileScanner2 = fileOpener(saveFolder + "biasesLayerOne.txt");
-			for (int i = 0; i < hiddenLayerOneSize; i++) {
-				biasesLayerOne[i] = Double.parseDouble(fileScanner2.nextLine());
-			}
-			fileScanner2.close();
-
-			// read the values for biasesLayerTwo[]
-			fileScanner2 = fileOpener(saveFolder + "biasesLayerTwo.txt");
-			for (int i = 0; i < hiddenLayerTwoSize; i++) {
-				biasesLayerTwo[i] = Double.parseDouble(fileScanner2.nextLine());
-			}
-			fileScanner2.close();
-
-			// read the values for biasesOutputLayer[]
-			fileScanner2 = fileOpener(saveFolder + "biasesOutputLayer.txt");
-			for (int i = 0; i < outputLayerSize; i++) {
-				biasesOutputLayer[i] = Double.parseDouble(fileScanner2.nextLine());
-			}
-			fileScanner2.close();
-
 			// read the values for weightsAfterInputLayer[][]
-			fileScanner2 = fileOpener(saveFolder + "weightsAfterInputLayer.txt");
-			for (int i = 0; i < inputLayerSize; i++) {
-				for (int j = 0; j < hiddenLayerOneSize; j++) {
-					weightsAfterInputLayer[i][j] = Double.parseDouble(fileScanner2.nextLine());
+			Scanner fileScanner2 = fileOpener(saveFolder + "weightsAfterInputLayer.txt");
+			for (int i = 0; i < this.inputLayerSize + 1; i++) {
+				for (int j = 0; j < this.hiddenLayerOneSize; j++) {
+					this.weightsAfterInputLayer[i][j] = Double.parseDouble(fileScanner2.nextLine());
 				}
 			}
 			fileScanner2.close();
 
 			// read the values for weightsAfterLayerOne[][]
 			fileScanner2 = fileOpener(saveFolder + "weightsAfterLayerOne.txt");
-			for (int i = 0; i < hiddenLayerOneSize; i++) {
-				for (int j = 0; j < hiddenLayerTwoSize; j++) {
-					weightsAfterLayerOne[i][j] = Double.parseDouble(fileScanner2.nextLine());
+			for (int i = 0; i < this.hiddenLayerOneSize + 1; i++) {
+				for (int j = 0; j < this.hiddenLayerTwoSize; j++) {
+					this.weightsAfterLayerOne[i][j] = Double.parseDouble(fileScanner2.nextLine());
 				}
 			}
 			fileScanner2.close();
 
 			// read the values for weightsAfterLayerTwo[][]
 			fileScanner2 = fileOpener(saveFolder + "weightsAfterLayerTwo.txt");
-			for (int i = 0; i < hiddenLayerTwoSize; i++) {
-				for (int j = 0; j < outputLayerSize; j++) {
-					weightsAfterLayerTwo[i][j] = Double.parseDouble(fileScanner2.nextLine());
+			for (int i = 0; i < this.hiddenLayerTwoSize + 1; i++) {
+				for (int j = 0; j < this.outputLayerSize; j++) {
+					this.weightsAfterLayerTwo[i][j] = Double.parseDouble(fileScanner2.nextLine());
 				}
 			}
 			fileScanner2.close();
 		} else {
-			randomizeOneDimensionalArr(biasesLayerOne);
-			randomizeOneDimensionalArr(biasesLayerTwo);
-			randomizeOneDimensionalArr(biasesOutputLayer);
-
-			randomizeTwoDimensionalArr(weightsAfterInputLayer);
-			randomizeTwoDimensionalArr(weightsAfterLayerOne);
-			randomizeTwoDimensionalArr(weightsAfterLayerTwo);
+			randomizeTwoDimensionalArr(this.weightsAfterInputLayer);
+			randomizeTwoDimensionalArr(this.weightsAfterLayerOne);
+			randomizeTwoDimensionalArr(this.weightsAfterLayerTwo);
 		}
 	}
 
@@ -333,11 +306,11 @@ public class ANN {
 	// the sigmoid method
 	private double sigmoid(double x) {
 		// Math.exp(x) is equivalent to (e^x)
-		return (1 / (1 + (1 / Math.exp(x))));
+		return (1.0 / (1.0 + (1.0 / Math.exp(x))));
 	}
 
 	// the method that will calculate a single layer of node values
-	private void layerCalculate(double[] inputs, double[] targets, double[][] weights, double[] biases) {
+	private void layerCalculate(double[] inputs, double[] targets, double[][] weights) {
 		for (int i = 0; i < targets.length; i++) {
 			// this will be the sum of all the inputs times all the weights plus a bias
 			double sum = 0;
@@ -345,7 +318,7 @@ public class ANN {
 				sum += (inputs[j] * weights[j][i]);
 			}
 			// add the bias to "sum"
-			sum += biases[i];
+			sum += this.bias * weights[inputs.length - 1][i];
 			// reasign the "sum" variable as the sigmoid of "sum"
 			sum = sigmoid(sum);
 			// assign the output to the target array after passing "sum" through the sigmoid
@@ -358,7 +331,7 @@ public class ANN {
 	private void normalize(double[] arr) {
 		// do the normalization on each element of arr[]
 		for (int i = 0; i < arr.length; i++) {
-			arr[i] = (2 * ((arr[i] - min) / (max - min))) - 1;
+			arr[i] = (arr[i] - this.min) / (this.max - this.min);
 		}
 	}
 
@@ -366,7 +339,7 @@ public class ANN {
 	private void denormalize(double[] arr) {
 		// do the denormalization on each element of arr[]
 		for (int i = 0; i < arr.length; i++) {
-			arr[i] = (((arr[i] + 1) / 2) * (max - min)) + min;
+			arr[i] = ((this.max - this.min) * arr[i]) + this.min;
 		}
 	}
 
@@ -385,12 +358,12 @@ public class ANN {
 
 			// this will change all the values in "hiddenLayerOneNodes" to the calculated
 			// values
-			layerCalculate(inputs, hiddenLayerOneNodes, weightsAfterInputLayer, biasesLayerOne);
+			layerCalculate(inputs, hiddenLayerOneNodes, weightsAfterInputLayer);
 			// this will change all the values in "hiddenLayerTwoNodes" to the calculated
 			// values
-			layerCalculate(hiddenLayerOneNodes, hiddenLayerTwoNodes, weightsAfterLayerOne, biasesLayerTwo);
+			layerCalculate(hiddenLayerOneNodes, hiddenLayerTwoNodes, weightsAfterLayerOne);
 			// this will change all the values in "outputs" to the calculated values
-			layerCalculate(hiddenLayerTwoNodes, outputs, weightsAfterLayerTwo, biasesOutputLayer);
+			layerCalculate(hiddenLayerTwoNodes, outputs, weightsAfterLayerTwo);
 			// by this part in the code, the outputs[] array should have been changed to the
 			// desired outputs (but still in normalized form)
 
@@ -426,7 +399,7 @@ public class ANN {
 	// a method to un-sigmoid a value (the inverse of the sigmoid function)
 	private double sigmoidInverse(double x) {
 		// Math.log(x) is ln(x)
-		return -1 * Math.log((1 / x) - 1);
+		return (-1.0) * Math.log((1.0 / x) - 1.0);
 	}
 
 	/*
@@ -437,20 +410,23 @@ public class ANN {
 	 * (d/dx)[sigmoid(x)] = sigmoid(x) * (1 - sigmoid(x))
 	 */
 	private double sigmoidDerivative(double x) {
-		return sigmoid(x) * (1 - sigmoid(x));
+		return sigmoid(x) * (1.0 - sigmoid(x));
 	}
 
 	// a method to calculate and return the error of a neuron in the output layer
 	private double outputNeuronError(double expectedOutput, double nonSigmoidedActualOutput) {
-		return (expectedOutput - sigmoid(nonSigmoidedActualOutput)) * sigmoidDerivative(nonSigmoidedActualOutput);
+		return (expectedOutput - sigmoid(nonSigmoidedActualOutput))
+				* (Math.abs(expectedOutput - sigmoid(nonSigmoidedActualOutput)));
+		// * sigmoidDerivative(nonSigmoidedActualOutput)
 	}
 
 	// a method to calculate and return the error of a neuron in a hidden layer
 	private double hiddenNeuronError(double weightFromOutputNeuron, double errorFromOutputNeuron,
 			double nonSigmoidedActualOutput) {
-		return (weightFromOutputNeuron * errorFromOutputNeuron) * sigmoidDerivative(nonSigmoidedActualOutput);
+		return (weightFromOutputNeuron * errorFromOutputNeuron);
+		// * sigmoidDerivative(nonSigmoidedActualOutput)
 	}
-	
+
 	// a method to copy over weights from the new arrays to the proper weight arrays
 	private void copyWeights(double[][] newWeights, double[][] oldWeights) {
 		for (int i = 0; i < oldWeights.length; i++) {
@@ -461,27 +437,27 @@ public class ANN {
 	}
 
 	// the method to actually train the ANN
-	public void learn(double[] givenInputs, double[] desiredOutputs, int epochs) {
+	public void learn(double[][] givenInputs, double[][] desiredOutputs, int dataSetSize) {
 		// repeat the learning process with the training set data for the number of
-		// epochs
-		for (int i = 0; i < epochs; i++) {
+		// data points in the data set
+		for (int i = 0; i < dataSetSize; i++) {
 			// an array to hold our actual outputs (which will be used to calculate error)
-			double[] actualOutputs = new double[outputLayerSize];
+			double[] actualOutputs = new double[this.outputLayerSize];
 
 			// normalize the desiredOutputs since we will need them normalized to calculate
 			// error
-			normalize(desiredOutputs);
+			normalize(desiredOutputs[i]);
 
 			// normalize the inputs
-			normalize(givenInputs);
+			normalize(givenInputs[i]);
 			// this will change all the values in "hiddenLayerOneNodes" to the calculated
 			// values
-			layerCalculate(givenInputs, hiddenLayerOneNodes, weightsAfterInputLayer, biasesLayerOne);
+			layerCalculate(givenInputs[i], this.hiddenLayerOneNodes, this.weightsAfterInputLayer);
 			// this will change all the values in "hiddenLayerTwoNodes" to the calculated
 			// values
-			layerCalculate(hiddenLayerOneNodes, hiddenLayerTwoNodes, weightsAfterLayerOne, biasesLayerTwo);
+			layerCalculate(this.hiddenLayerOneNodes, this.hiddenLayerTwoNodes, this.weightsAfterLayerOne);
 			// this will change all the values in "outputs" to the calculated values
-			layerCalculate(hiddenLayerTwoNodes, actualOutputs, weightsAfterLayerTwo, biasesOutputLayer);
+			layerCalculate(this.hiddenLayerTwoNodes, actualOutputs, this.weightsAfterLayerTwo);
 			/*
 			 * by this part in the code, the actualOutputs[] array should have been changed
 			 * to the desired outputs (but still in normalized form)
@@ -492,69 +468,137 @@ public class ANN {
 			 */
 
 			// arrays to keep track of the error
-			double[] outputLayerError = new double[outputLayerSize];
-			double[] hiddenLayerTwoError = new double[hiddenLayerTwoSize];
-			double[] hiddenLayerOneError = new double[hiddenLayerOneSize];
-			
+			double[] outputLayerError = new double[this.outputLayerSize];
+			double[] hiddenLayerTwoError = new double[this.hiddenLayerTwoSize];
+			double[] hiddenLayerOneError = new double[this.hiddenLayerOneSize];
+
 			// arrays to keep track of the new weights
-			double[][] newWeightsAfterLayerTwo = new double[weightsAfterLayerTwo.length][weightsAfterLayerTwo[0].length];
-			double[][] newWeightsAfterLayerOne = new double[weightsAfterLayerOne.length][weightsAfterLayerOne[0].length];
-			double[][] newWeightsAfterInputLayer = new double[weightsAfterInputLayer.length][weightsAfterInputLayer[0].length];
-			
+			double[][] newWeightsAfterLayerTwo = new double[this.weightsAfterLayerTwo.length][this.weightsAfterLayerTwo[0].length];
+			double[][] newWeightsAfterLayerOne = new double[this.weightsAfterLayerOne.length][this.weightsAfterLayerOne[0].length];
+			double[][] newWeightsAfterInputLayer = new double[this.weightsAfterInputLayer.length][this.weightsAfterInputLayer[0].length];
 			/*
-			 * weightsAfterLayerTwo = new double[hiddenLayerTwoSize][outputLayerSize];
-			 * 
 			 * adjust the weights that lead to the output layer
 			 * 
 			 * j keeps track of the hidden layer two node k keeps track of the output layer
 			 * node
+			 * 
+			 * we subtract 1 from the length of the weights after layer two so that we don't
+			 * try to mess with the weight that connects to the bias (which doesn't have a
+			 * corresponding hidden node)
 			 */
-			for (int j = 0; j < weightsAfterLayerTwo.length; j++) {
-				for (int k = 0; k < weightsAfterLayerTwo[j].length; k++) {
+			for (int j = 0; j < this.weightsAfterLayerTwo.length; j++) {
+				for (int k = 0; k < this.weightsAfterLayerTwo[j].length; k++) {
 					// store the error in the outputLayerError[] array to be used later
-					outputLayerError[k] = outputNeuronError(desiredOutputs[k], sigmoidInverse(actualOutputs[k]));
-					// this will sometimes be a positive adjustment and sometimes a negative
-					// adjustment
-					newWeightsAfterLayerTwo[j][k] += learningRate * hiddenLayerTwoNodes[j] * outputLayerError[k];
+					outputLayerError[k] = outputNeuronError(desiredOutputs[i][k], sigmoidInverse(actualOutputs[k]));
+
+					// the following will sometimes be a positive adjustment and sometimes a
+					// negative adjustment
+
+					// if we are on the weight that connects to the bias
+					if (j == this.weightsAfterLayerTwo.length - 1) {
+						newWeightsAfterLayerTwo[j][k] = weightsAfterLayerTwo[j][k]
+								+ (this.learningRate * this.bias * outputLayerError[k]);
+					} else {
+						// if we are not on the weight that connects to the bias (if we are on a normal
+						// weight which connects to a hidden node)
+						newWeightsAfterLayerTwo[j][k] = weightsAfterLayerTwo[j][k]
+								+ (this.learningRate * this.hiddenLayerTwoNodes[j] * outputLayerError[k]);
+					}
+
+					// make sure that the new weight stays on the interval [-1.0, 1.0]
+					if (newWeightsAfterLayerTwo[j][k] > 1.0) {
+						newWeightsAfterLayerTwo[j][k] = 1.0;
+					} else if (newWeightsAfterLayerTwo[j][k] < -1.0) {
+						newWeightsAfterLayerTwo[j][k] = 1.0;
+					}
 				}
 			}
+			// adjust the weight that
 			// adjust the weights that lead to the second hidden layer
-			for (int j = 0; j < weightsAfterLayerOne.length; j++) {
-				for (int k = 0; k < weightsAfterLayerOne[j].length; k++) {
+			for (int j = 0; j < this.weightsAfterLayerOne.length; j++) {
+				for (int k = 0; k < this.weightsAfterLayerOne[j].length; k++) {
 					// store the error to be used later
 					/*
+					 * THIS ERROR HAS BEEN FIXED (but I've left the comment in to make sure I know
+					 * what's going on if it ever happens again):
+					 * 
 					 * THE ERROR: the error is because we are calling the array outputLayerError[]
 					 * with index "k". However, index "k" keeps track of the number neuron from the
 					 * second hidden layer we are on. Since there are more neurons on the second
 					 * hidden layer than the output layer, we end up calling an index of the output
 					 * layer that does not exist (and thus we get an ArrayIndexOutOfBoundsException)
 					 */
-					for (int x = 0; x < outputLayerSize; x++) {
-						hiddenLayerTwoError[k] += hiddenNeuronError(weightsAfterLayerTwo[j][x], outputLayerError[x], sigmoidInverse(hiddenLayerTwoNodes[k]));
+					for (int x = 0; x < this.outputLayerSize; x++) {
+						hiddenLayerTwoError[k] += hiddenNeuronError(this.weightsAfterLayerTwo[j][x],
+								outputLayerError[x], sigmoidInverse(this.hiddenLayerTwoNodes[k]));
 					}
 					// adjust the weight
-					newWeightsAfterLayerOne[j][k] += learningRate * hiddenLayerOneNodes[j] * hiddenLayerTwoError[k];
+
+					// if we are on the weight that connects to the bias
+					if (j == this.weightsAfterLayerOne.length - 1) {
+						newWeightsAfterLayerOne[j][k] = weightsAfterLayerOne[j][k]
+								+ (this.learningRate * this.bias * hiddenLayerTwoError[k]);
+					} else {
+						// if we are not on the weight that connects to the bias (if we are on a normal
+						// weight which connects to a hidden node)
+						newWeightsAfterLayerOne[j][k] = weightsAfterLayerOne[j][k]
+								+ (this.learningRate * this.hiddenLayerOneNodes[j] * hiddenLayerTwoError[k]);
+					}
+
+					// make sure that the new weight stays on the interval [-1.0, 1.0]
+					if (newWeightsAfterLayerOne[j][k] > 1.0) {
+						newWeightsAfterLayerOne[j][k] = 1.0;
+					} else if (newWeightsAfterLayerOne[j][k] < -1.0) {
+						newWeightsAfterLayerOne[j][k] = 1.0;
+					}
 				}
 			}
 			// adjust the weights that lead to the first hidden layer
-			for (int j = 0; j < weightsAfterInputLayer.length; j++) {
-				for (int k = 0; k < weightsAfterInputLayer[j].length; k++) {
+			for (int j = 0; j < this.weightsAfterInputLayer.length; j++) {
+				for (int k = 0; k < this.weightsAfterInputLayer[j].length; k++) {
 					// store the error (this time it won't be used later, but maybe in future
 					// versions it will and this looks cleaner)
-					for (int x = 0; x < hiddenLayerTwoSize; x++ ) {
-						hiddenLayerOneError[k] += hiddenNeuronError(weightsAfterLayerOne[j][x], hiddenLayerTwoError[x], sigmoidInverse(hiddenLayerOneNodes[k]));
+					for (int x = 0; x < this.hiddenLayerTwoSize; x++) {
+						hiddenLayerOneError[k] += hiddenNeuronError(this.weightsAfterLayerOne[j][x],
+								hiddenLayerTwoError[x], sigmoidInverse(this.hiddenLayerOneNodes[k]));
 					}
 					// adjust the weight
-					newWeightsAfterInputLayer[j][k] += learningRate * givenInputs[j] * hiddenLayerOneError[k];
+
+					// if we are on the weight that connects to the bias
+					if (j == this.weightsAfterInputLayer.length - 1) {
+						newWeightsAfterInputLayer[j][k] = weightsAfterInputLayer[j][k]
+								+ (this.learningRate * this.bias * hiddenLayerOneError[k]);
+					} else {
+						// if we are not on the weight that connects to the bias (if we are on a normal
+						// weight which connects to a hidden node)
+						newWeightsAfterInputLayer[j][k] = weightsAfterInputLayer[j][k]
+								+ (this.learningRate * givenInputs[i][j] * hiddenLayerOneError[k]);
+					}
+
+					// make sure that the new weight stays on the interval [-1.0, 1.0]
+					if (newWeightsAfterInputLayer[j][k] > 1.0) {
+						newWeightsAfterInputLayer[j][k] = 1.0;
+					} else if (newWeightsAfterInputLayer[j][k] < -1.0) {
+						newWeightsAfterInputLayer[j][k] = 1.0;
+					}
 				}
 			}
-			
+
 			// copy all the new weights into the arrays for the old weights
-			copyWeights(newWeightsAfterLayerTwo, weightsAfterLayerTwo);
-			copyWeights(newWeightsAfterLayerOne, weightsAfterLayerOne);
-			copyWeights(newWeightsAfterInputLayer, weightsAfterInputLayer);
-			
-			System.out.println("Number of completed epochs: " + (i + 1));
+			copyWeights(newWeightsAfterLayerTwo, this.weightsAfterLayerTwo);
+			copyWeights(newWeightsAfterLayerOne, this.weightsAfterLayerOne);
+			copyWeights(newWeightsAfterInputLayer, this.weightsAfterInputLayer);
 		}
+	}
+
+	/*
+	 * =============================================================================
+	 * =========================== Miscellaneous Methods ===========================
+	 * =============================================================================
+	 */
+
+	public void test(double[] arr) {
+		normalize(arr);
+		denormalize(arr);
 	}
 }
