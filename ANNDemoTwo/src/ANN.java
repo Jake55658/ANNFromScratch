@@ -35,6 +35,7 @@ public class ANN {
 
 	// variables to keep track of normalization and denormalization
 	double min, max;
+	double normalizationRate = 0.9;
 
 	// variables to keep track of datasets of inputs and outputs for training
 //	double[] givenInputs, desiredOutputs;
@@ -310,7 +311,7 @@ public class ANN {
 	}
 
 	// the method that will calculate a single layer of node values
-	private void layerCalculate(double[] inputs, double[] targets, double[][] weights) {
+	private void layerCalculate(double[] inputs, double[] targets, double[][] weights, boolean isOutput) {
 		for (int i = 0; i < targets.length; i++) {
 			// this will be the sum of all the inputs times all the weights plus a bias
 			double sum = 0;
@@ -319,8 +320,11 @@ public class ANN {
 			}
 			// add the bias to "sum"
 			sum += this.bias * weights[inputs.length - 1][i];
-			// reasign the "sum" variable as the sigmoid of "sum"
-			sum = sigmoid(sum);
+			// reasign the "sum" variable as the sigmoid of "sum" if it isn't the output
+			// layer
+			if (!(isOutput)) {
+				sum = sigmoid(sum);
+			}
 			// assign the output to the target array after passing "sum" through the sigmoid
 			// method
 			targets[i] = sum;
@@ -331,7 +335,7 @@ public class ANN {
 	private void normalize(double[] arr) {
 		// do the normalization on each element of arr[]
 		for (int i = 0; i < arr.length; i++) {
-			arr[i] = (arr[i] - this.min) / (this.max - this.min);
+			arr[i] = ((((arr[i] - this.max) - this.min) / (this.max - this.min)) * this.normalizationRate) + 0.5;
 		}
 	}
 
@@ -339,7 +343,7 @@ public class ANN {
 	private void denormalize(double[] arr) {
 		// do the denormalization on each element of arr[]
 		for (int i = 0; i < arr.length; i++) {
-			arr[i] = ((this.max - this.min) * arr[i]) + this.min;
+			arr[i] = (((arr[i] - 0.5) * (this.max - this.min)) / this.normalizationRate) + this.min + this.max;
 		}
 	}
 
@@ -358,21 +362,21 @@ public class ANN {
 
 			// this will change all the values in "hiddenLayerOneNodes" to the calculated
 			// values
-			layerCalculate(inputs, hiddenLayerOneNodes, weightsAfterInputLayer);
+			layerCalculate(inputs, hiddenLayerOneNodes, weightsAfterInputLayer, false);
 			// this will change all the values in "hiddenLayerTwoNodes" to the calculated
 			// values
-			layerCalculate(hiddenLayerOneNodes, hiddenLayerTwoNodes, weightsAfterLayerOne);
+			layerCalculate(hiddenLayerOneNodes, hiddenLayerTwoNodes, weightsAfterLayerOne, false);
 			// this will change all the values in "outputs" to the calculated values
-			layerCalculate(hiddenLayerTwoNodes, outputs, weightsAfterLayerTwo);
+			layerCalculate(hiddenLayerTwoNodes, outputs, weightsAfterLayerTwo, false);
 			// by this part in the code, the outputs[] array should have been changed to the
 			// desired outputs (but still in normalized form)
 
 			// denormalize the outputs
-			denormalize(outputs);
+//			denormalize(outputs);
 
-			System.out.println("=====================================================");
-			System.out.println("the outputs array after calculation" + arrToString(outputs));
-			System.out.println("=====================================================");
+//			System.out.println("=====================================================");
+//			System.out.println("the outputs array after calculation" + arrToString(outputs));
+//			System.out.println("=====================================================");
 		}
 	}
 
@@ -415,9 +419,13 @@ public class ANN {
 
 	// a method to calculate and return the error of a neuron in the output layer
 	private double outputNeuronError(double expectedOutput, double nonSigmoidedActualOutput) {
-		return (expectedOutput - sigmoid(nonSigmoidedActualOutput))
-				* (Math.abs(expectedOutput - sigmoid(nonSigmoidedActualOutput)));
-		// * sigmoidDerivative(nonSigmoidedActualOutput)
+		System.out.println("===================================================");
+		System.out.println("expectedOutput = " + expectedOutput);
+		System.out.println("nonSigmoidedActualOutput = " + nonSigmoidedActualOutput);
+		System.out.println("sigmoid = " + sigmoid(nonSigmoidedActualOutput));
+		System.out.println("sigmoidDerivative = " + sigmoidDerivative(nonSigmoidedActualOutput));
+		System.out.println("===================================================");
+		return (expectedOutput - sigmoid(nonSigmoidedActualOutput)) * sigmoidDerivative(nonSigmoidedActualOutput);
 	}
 
 	// a method to calculate and return the error of a neuron in a hidden layer
@@ -447,17 +455,18 @@ public class ANN {
 			// normalize the desiredOutputs since we will need them normalized to calculate
 			// error
 			normalize(desiredOutputs[i]);
-
+			
 			// normalize the inputs
 			normalize(givenInputs[i]);
+			
 			// this will change all the values in "hiddenLayerOneNodes" to the calculated
 			// values
-			layerCalculate(givenInputs[i], this.hiddenLayerOneNodes, this.weightsAfterInputLayer);
+			layerCalculate(givenInputs[i], this.hiddenLayerOneNodes, this.weightsAfterInputLayer, false);
 			// this will change all the values in "hiddenLayerTwoNodes" to the calculated
 			// values
-			layerCalculate(this.hiddenLayerOneNodes, this.hiddenLayerTwoNodes, this.weightsAfterLayerOne);
+			layerCalculate(this.hiddenLayerOneNodes, this.hiddenLayerTwoNodes, this.weightsAfterLayerOne, false);
 			// this will change all the values in "outputs" to the calculated values
-			layerCalculate(this.hiddenLayerTwoNodes, actualOutputs, this.weightsAfterLayerTwo);
+			layerCalculate(this.hiddenLayerTwoNodes, actualOutputs, this.weightsAfterLayerTwo, false);
 			/*
 			 * by this part in the code, the actualOutputs[] array should have been changed
 			 * to the desired outputs (but still in normalized form)
@@ -490,6 +499,8 @@ public class ANN {
 				for (int k = 0; k < this.weightsAfterLayerTwo[j].length; k++) {
 					// store the error in the outputLayerError[] array to be used later
 					outputLayerError[k] = outputNeuronError(desiredOutputs[i][k], sigmoidInverse(actualOutputs[k]));
+
+					System.out.println("outputLayerError[" + k + "] = " + outputLayerError[k]);
 
 					// the following will sometimes be a positive adjustment and sometimes a
 					// negative adjustment
@@ -532,6 +543,14 @@ public class ANN {
 						hiddenLayerTwoError[k] += hiddenNeuronError(this.weightsAfterLayerTwo[j][x],
 								outputLayerError[x], sigmoidInverse(this.hiddenLayerTwoNodes[k]));
 					}
+					/*
+					 * we adjust the error based on the derivative of the sigmoid function
+					 * 
+					 * I don't know why this helps or is necessary. The math can be found on page 5
+					 * of tutorial 3 from MIT course 6.034 (Fall 2010)
+					 */
+					hiddenLayerTwoError[k] *= sigmoidDerivative(sigmoidInverse(this.hiddenLayerTwoNodes[k]));
+
 					// adjust the weight
 
 					// if we are on the weight that connects to the bias
@@ -562,6 +581,15 @@ public class ANN {
 						hiddenLayerOneError[k] += hiddenNeuronError(this.weightsAfterLayerOne[j][x],
 								hiddenLayerTwoError[x], sigmoidInverse(this.hiddenLayerOneNodes[k]));
 					}
+
+					/*
+					 * we adjust the error based on the derivative of the sigmoid function
+					 * 
+					 * I don't know why this helps or is necessary. The math can be found on page 5
+					 * of tutorial 3 from MIT course 6.034 (Fall 2010)
+					 */
+					hiddenLayerOneError[k] *= sigmoidDerivative(sigmoidInverse(this.hiddenLayerOneNodes[k]));
+
 					// adjust the weight
 
 					// if we are on the weight that connects to the bias
