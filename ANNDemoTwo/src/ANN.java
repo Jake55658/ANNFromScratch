@@ -311,7 +311,7 @@ public class ANN {
 	}
 
 	// the method that will calculate a single layer of node values
-	private void layerCalculate(double[] inputs, double[] targets, double[][] weights, boolean isOutput) {
+	private void layerCalculate(double[] inputs, double[] targets, double[][] weights) {
 		for (int i = 0; i < targets.length; i++) {
 			// this will be the sum of all the inputs times all the weights plus a bias
 			double sum = 0;
@@ -319,12 +319,10 @@ public class ANN {
 				sum += (inputs[j] * weights[j][i]);
 			}
 			// add the bias to "sum"
-			sum += this.bias * weights[inputs.length - 1][i];
+			sum += this.bias * weights[inputs.length][i];
 			// reasign the "sum" variable as the sigmoid of "sum" if it isn't the output
 			// layer
-			if (!(isOutput)) {
-				sum = sigmoid(sum);
-			}
+			sum = sigmoid(sum);
 			// assign the output to the target array after passing "sum" through the sigmoid
 			// method
 			targets[i] = sum;
@@ -362,12 +360,12 @@ public class ANN {
 
 			// this will change all the values in "hiddenLayerOneNodes" to the calculated
 			// values
-			layerCalculate(inputs, hiddenLayerOneNodes, weightsAfterInputLayer, false);
+			layerCalculate(inputs, hiddenLayerOneNodes, weightsAfterInputLayer);
 			// this will change all the values in "hiddenLayerTwoNodes" to the calculated
 			// values
-			layerCalculate(hiddenLayerOneNodes, hiddenLayerTwoNodes, weightsAfterLayerOne, false);
+			layerCalculate(hiddenLayerOneNodes, hiddenLayerTwoNodes, weightsAfterLayerOne);
 			// this will change all the values in "outputs" to the calculated values
-			layerCalculate(hiddenLayerTwoNodes, outputs, weightsAfterLayerTwo, false);
+			layerCalculate(hiddenLayerTwoNodes, outputs, weightsAfterLayerTwo);
 			// by this part in the code, the outputs[] array should have been changed to the
 			// desired outputs (but still in normalized form)
 
@@ -418,20 +416,21 @@ public class ANN {
 	}
 
 	// a method to calculate and return the error of a neuron in the output layer
-	private double outputNeuronError(double expectedOutput, double nonSigmoidedActualOutput) {
-		System.out.println("===================================================");
-		System.out.println("expectedOutput = " + expectedOutput);
-		System.out.println("nonSigmoidedActualOutput = " + nonSigmoidedActualOutput);
-		System.out.println("sigmoid = " + sigmoid(nonSigmoidedActualOutput));
-		System.out.println("sigmoidDerivative = " + sigmoidDerivative(nonSigmoidedActualOutput));
-		System.out.println("===================================================");
-		return (expectedOutput - sigmoid(nonSigmoidedActualOutput)) * sigmoidDerivative(nonSigmoidedActualOutput);
+	private double outputNeuronError(double expectedOutput, double nonSigmoidedActualOutput, double inputNode) {
+//		System.out.println("===================================================");
+//		System.out.println("expectedOutput = " + expectedOutput);
+//		System.out.println("nonSigmoidedActualOutput = " + nonSigmoidedActualOutput);
+//		System.out.println("sigmoid = " + sigmoid(nonSigmoidedActualOutput));
+//		System.out.println("sigmoidDerivative = " + sigmoidDerivative(nonSigmoidedActualOutput));
+//		System.out.println("===================================================");
+		return (expectedOutput - sigmoid(nonSigmoidedActualOutput)) * inputNode;
+		// * sigmoidDerivative(nonSigmoidedActualOutput)
 	}
 
 	// a method to calculate and return the error of a neuron in a hidden layer
-	private double hiddenNeuronError(double weightFromOutputNeuron, double errorFromOutputNeuron,
-			double nonSigmoidedActualOutput) {
-		return (weightFromOutputNeuron * errorFromOutputNeuron);
+	private double hiddenNeuronError(double weightFromOutputNeuron, double nonSigmoidedActualOutput, double inputNode,
+			double errorFromOutputNeuron) {
+		return weightFromOutputNeuron * inputNode * errorFromOutputNeuron;
 		// * sigmoidDerivative(nonSigmoidedActualOutput)
 	}
 
@@ -443,9 +442,36 @@ public class ANN {
 			}
 		}
 	}
+	
+	/*
+	 * a method to shuffle the inputs for learning
+	 * 
+	 * this method takes in a 2D array since the inputs for learning are put in a 2D array
+	 */
+	private void shuffleInputsAndOutputs(double[][] inputs, double[][] outputs) {
+		Random rgen = new Random();
+		
+		for (int i = 0; i < inputs.length; i++) {
+			// generate the random position
+			int randomPosition = rgen.nextInt(inputs.length);
+			
+			// switch to elements in the inputs[][] array
+			double[] temp = inputs[i];
+			inputs[i] = inputs[randomPosition];
+			inputs[randomPosition] = temp;
+			
+			// switch two elements in the outputs[][] array (with the same indices of the switched elements in the inputs[][] array)
+			temp = outputs[i];
+			outputs[i] = outputs[randomPosition];
+			outputs[randomPosition] = temp;
+		}
+	}
 
 	// the method to actually train the ANN
 	public void learn(double[][] givenInputs, double[][] desiredOutputs, int dataSetSize) {
+		// randomize the testing data before passing it into the ANN
+		shuffleInputsAndOutputs(givenInputs, desiredOutputs);
+		
 		// repeat the learning process with the training set data for the number of
 		// data points in the data set
 		for (int i = 0; i < dataSetSize; i++) {
@@ -455,18 +481,18 @@ public class ANN {
 			// normalize the desiredOutputs since we will need them normalized to calculate
 			// error
 			normalize(desiredOutputs[i]);
-			
+
 			// normalize the inputs
 			normalize(givenInputs[i]);
-			
+
 			// this will change all the values in "hiddenLayerOneNodes" to the calculated
 			// values
-			layerCalculate(givenInputs[i], this.hiddenLayerOneNodes, this.weightsAfterInputLayer, false);
+			layerCalculate(givenInputs[i], this.hiddenLayerOneNodes, this.weightsAfterInputLayer);
 			// this will change all the values in "hiddenLayerTwoNodes" to the calculated
 			// values
-			layerCalculate(this.hiddenLayerOneNodes, this.hiddenLayerTwoNodes, this.weightsAfterLayerOne, false);
+			layerCalculate(this.hiddenLayerOneNodes, this.hiddenLayerTwoNodes, this.weightsAfterLayerOne);
 			// this will change all the values in "outputs" to the calculated values
-			layerCalculate(this.hiddenLayerTwoNodes, actualOutputs, this.weightsAfterLayerTwo, false);
+			layerCalculate(this.hiddenLayerTwoNodes, actualOutputs, this.weightsAfterLayerTwo);
 			/*
 			 * by this part in the code, the actualOutputs[] array should have been changed
 			 * to the desired outputs (but still in normalized form)
@@ -497,117 +523,97 @@ public class ANN {
 			 */
 			for (int j = 0; j < this.weightsAfterLayerTwo.length; j++) {
 				for (int k = 0; k < this.weightsAfterLayerTwo[j].length; k++) {
-					// store the error in the outputLayerError[] array to be used later
-					outputLayerError[k] = outputNeuronError(desiredOutputs[i][k], sigmoidInverse(actualOutputs[k]));
+					// if we are on the weight that connects to the bias, pass in the bias as the
+					// value for the node from the previous layer. Otherwise, just pass in the
+					// actual value from the previous layer
+					double previousLayerNode;
+					if (j == this.weightsAfterLayerTwo.length - 1) {
+						previousLayerNode = this.bias;
+					} else {
+						previousLayerNode = this.hiddenLayerTwoNodes[j];
+					}
 
-					System.out.println("outputLayerError[" + k + "] = " + outputLayerError[k]);
+					// store the error in the outputLayerError[] array to be used later
+					outputLayerError[k] = outputNeuronError(desiredOutputs[i][k], sigmoidInverse(actualOutputs[k]),
+							previousLayerNode);
+
+//					System.out.println("outputLayerError[" + k + "] = " + outputLayerError[k]);
 
 					// the following will sometimes be a positive adjustment and sometimes a
 					// negative adjustment
-
-					// if we are on the weight that connects to the bias
-					if (j == this.weightsAfterLayerTwo.length - 1) {
-						newWeightsAfterLayerTwo[j][k] = weightsAfterLayerTwo[j][k]
-								+ (this.learningRate * this.bias * outputLayerError[k]);
-					} else {
-						// if we are not on the weight that connects to the bias (if we are on a normal
-						// weight which connects to a hidden node)
-						newWeightsAfterLayerTwo[j][k] = weightsAfterLayerTwo[j][k]
-								+ (this.learningRate * this.hiddenLayerTwoNodes[j] * outputLayerError[k]);
-					}
+					newWeightsAfterLayerTwo[j][k] = weightsAfterLayerTwo[j][k]
+							+ (Math.abs(weightsAfterLayerTwo[j][k]) * this.learningRate * outputLayerError[k]);
 
 					// make sure that the new weight stays on the interval [-1.0, 1.0]
 					if (newWeightsAfterLayerTwo[j][k] > 1.0) {
 						newWeightsAfterLayerTwo[j][k] = 1.0;
 					} else if (newWeightsAfterLayerTwo[j][k] < -1.0) {
-						newWeightsAfterLayerTwo[j][k] = 1.0;
+						newWeightsAfterLayerTwo[j][k] = -1.0;
 					}
 				}
 			}
-			// adjust the weight that
 			// adjust the weights that lead to the second hidden layer
 			for (int j = 0; j < this.weightsAfterLayerOne.length; j++) {
 				for (int k = 0; k < this.weightsAfterLayerOne[j].length; k++) {
-					// store the error to be used later
-					/*
-					 * THIS ERROR HAS BEEN FIXED (but I've left the comment in to make sure I know
-					 * what's going on if it ever happens again):
-					 * 
-					 * THE ERROR: the error is because we are calling the array outputLayerError[]
-					 * with index "k". However, index "k" keeps track of the number neuron from the
-					 * second hidden layer we are on. Since there are more neurons on the second
-					 * hidden layer than the output layer, we end up calling an index of the output
-					 * layer that does not exist (and thus we get an ArrayIndexOutOfBoundsException)
-					 */
-					for (int x = 0; x < this.outputLayerSize; x++) {
-						hiddenLayerTwoError[k] += hiddenNeuronError(this.weightsAfterLayerTwo[j][x],
-								outputLayerError[x], sigmoidInverse(this.hiddenLayerTwoNodes[k]));
+					// if we are on the weight that connects to the bias, pass in the bias as the
+					// value for the node from the previous layer. Otherwise, just pass in the
+					// actual value from the previous layer
+					double previousLayerNode;
+					if (j == this.weightsAfterLayerOne.length - 1) {
+						previousLayerNode = this.bias;
+					} else {
+						previousLayerNode = this.hiddenLayerOneNodes[j];
 					}
-					/*
-					 * we adjust the error based on the derivative of the sigmoid function
-					 * 
-					 * I don't know why this helps or is necessary. The math can be found on page 5
-					 * of tutorial 3 from MIT course 6.034 (Fall 2010)
-					 */
-					hiddenLayerTwoError[k] *= sigmoidDerivative(sigmoidInverse(this.hiddenLayerTwoNodes[k]));
+
+					// store the error to be used later
+					for (int x = 0; x < this.outputLayerSize; x++) {
+						hiddenLayerTwoError[k] += hiddenNeuronError(this.weightsAfterLayerTwo[k][x],
+								sigmoidInverse(this.hiddenLayerTwoNodes[k]), previousLayerNode, outputLayerError[x]);
+					}
 
 					// adjust the weight
-
-					// if we are on the weight that connects to the bias
-					if (j == this.weightsAfterLayerOne.length - 1) {
-						newWeightsAfterLayerOne[j][k] = weightsAfterLayerOne[j][k]
-								+ (this.learningRate * this.bias * hiddenLayerTwoError[k]);
-					} else {
-						// if we are not on the weight that connects to the bias (if we are on a normal
-						// weight which connects to a hidden node)
-						newWeightsAfterLayerOne[j][k] = weightsAfterLayerOne[j][k]
-								+ (this.learningRate * this.hiddenLayerOneNodes[j] * hiddenLayerTwoError[k]);
-					}
+					newWeightsAfterLayerOne[j][k] = weightsAfterLayerOne[j][k]
+							+ (Math.abs(weightsAfterLayerOne[j][k]) * this.learningRate * hiddenLayerTwoError[k]);
 
 					// make sure that the new weight stays on the interval [-1.0, 1.0]
 					if (newWeightsAfterLayerOne[j][k] > 1.0) {
 						newWeightsAfterLayerOne[j][k] = 1.0;
 					} else if (newWeightsAfterLayerOne[j][k] < -1.0) {
-						newWeightsAfterLayerOne[j][k] = 1.0;
+						newWeightsAfterLayerOne[j][k] = -1.0;
 					}
 				}
 			}
 			// adjust the weights that lead to the first hidden layer
 			for (int j = 0; j < this.weightsAfterInputLayer.length; j++) {
 				for (int k = 0; k < this.weightsAfterInputLayer[j].length; k++) {
+					// if we are on the weight that connects to the bias, pass in the bias as the
+					// value for the node from the previous layer. Otherwise, just pass in the
+					// actual value from the previous layer
+					double previousLayerNode;
+					if (j == this.weightsAfterInputLayer.length - 1) {
+						previousLayerNode = this.bias;
+					} else {
+						previousLayerNode = givenInputs[i][j];
+					}
+
 					// store the error (this time it won't be used later, but maybe in future
 					// versions it will and this looks cleaner)
 					for (int x = 0; x < this.hiddenLayerTwoSize; x++) {
-						hiddenLayerOneError[k] += hiddenNeuronError(this.weightsAfterLayerOne[j][x],
-								hiddenLayerTwoError[x], sigmoidInverse(this.hiddenLayerOneNodes[k]));
+						// double weightFromOutputNeuron, double nonSigmoidedActualOutput, double
+						// inputNode, double errorFromOutputNeuron
+						hiddenLayerOneError[k] += hiddenNeuronError(this.weightsAfterLayerOne[k][x],
+								sigmoidInverse(this.hiddenLayerOneNodes[k]), previousLayerNode, hiddenLayerTwoError[x]);
 					}
-
-					/*
-					 * we adjust the error based on the derivative of the sigmoid function
-					 * 
-					 * I don't know why this helps or is necessary. The math can be found on page 5
-					 * of tutorial 3 from MIT course 6.034 (Fall 2010)
-					 */
-					hiddenLayerOneError[k] *= sigmoidDerivative(sigmoidInverse(this.hiddenLayerOneNodes[k]));
 
 					// adjust the weight
-
-					// if we are on the weight that connects to the bias
-					if (j == this.weightsAfterInputLayer.length - 1) {
-						newWeightsAfterInputLayer[j][k] = weightsAfterInputLayer[j][k]
-								+ (this.learningRate * this.bias * hiddenLayerOneError[k]);
-					} else {
-						// if we are not on the weight that connects to the bias (if we are on a normal
-						// weight which connects to a hidden node)
-						newWeightsAfterInputLayer[j][k] = weightsAfterInputLayer[j][k]
-								+ (this.learningRate * givenInputs[i][j] * hiddenLayerOneError[k]);
-					}
+					newWeightsAfterInputLayer[j][k] = weightsAfterInputLayer[j][k]
+							+ (Math.abs(weightsAfterInputLayer[j][k]) * this.learningRate * hiddenLayerOneError[k]);
 
 					// make sure that the new weight stays on the interval [-1.0, 1.0]
 					if (newWeightsAfterInputLayer[j][k] > 1.0) {
 						newWeightsAfterInputLayer[j][k] = 1.0;
 					} else if (newWeightsAfterInputLayer[j][k] < -1.0) {
-						newWeightsAfterInputLayer[j][k] = 1.0;
+						newWeightsAfterInputLayer[j][k] = -1.0;
 					}
 				}
 			}
