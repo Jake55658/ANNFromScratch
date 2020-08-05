@@ -11,27 +11,31 @@ public class Caller {
 		String firstANNSaveDataLocation = environment.getLocation() + "\\src\\ANNData\\firstANN\\";
 
 		// initializing values
-		int min = -10000;
-		int max = 10000;
+		int minInputAndOutput = -10000;
+		int maxInputAndOutput = 10000;
 		boolean readSaveData = true;
 		boolean learn = true;
+		int minLearningInputAndOutput = -10000;
+		int maxLearningInputAndOutput = 10000;
 		int dataSetSize = 10;
-		int epochs = 10;
+		int epochs = 1;
 		boolean save = true;
 		boolean test = true;
+		int minTestInputs = -10000;
+		int maxTestInputs = 10000;
 		int numTestInputs = 10;
 
 		// an instance of the ANN class (from the ANN.java file)
-		ANN firstANN = new ANN(1, 20, 20, 1, min, max, readSaveData, firstANNSaveDataLocation);
+		ANN firstANN = new ANN(1, 20, 20, 1, minInputAndOutput, maxInputAndOutput, readSaveData, firstANNSaveDataLocation);
 
 		// the learning
-		trainANN(learn, dataSetSize, epochs, min, max, firstANN);
+		trainANN(learn, dataSetSize, epochs, minLearningInputAndOutput, maxLearningInputAndOutput, firstANN);
 
 		// save the ANN
 		saveANN(save, firstANN, firstANNSaveDataLocation);
 
 		// test the ANN
-		testANN(test, firstANN, numTestInputs, min, max);
+		testANN(test, firstANN, numTestInputs, minTestInputs, maxTestInputs);
 	}
 
 	// a method for the function that the ANN is trying to approximate

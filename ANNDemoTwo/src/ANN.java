@@ -170,7 +170,7 @@ public class ANN {
 	// a method for saving all the ANN data (writing it to the files)
 	public void save(String saveFolder) throws IOException {
 		System.out.println(
-				"=========================================================================================================================================================");
+				"===============================================================================================================");
 
 		// write all the values for the settings to the settings.txt file
 		PrintStream writer = fileWriter(saveFolder + "settings.txt");
@@ -208,7 +208,7 @@ public class ANN {
 		writer.close();
 
 		System.out.println(
-				"=========================================================================================================================================================");
+				"===============================================================================================================");
 	}
 
 	public ANN(int inputLayerSizeFromClient, int hiddenLayerOneSizeFromClient, int hiddenLayerTwoSizeFromClient,
@@ -442,25 +442,27 @@ public class ANN {
 			}
 		}
 	}
-	
+
 	/*
 	 * a method to shuffle the inputs for learning
 	 * 
-	 * this method takes in a 2D array since the inputs for learning are put in a 2D array
+	 * this method takes in a 2D array since the inputs for learning are put in a 2D
+	 * array
 	 */
 	private void shuffleInputsAndOutputs(double[][] inputs, double[][] outputs) {
 		Random rgen = new Random();
-		
+
 		for (int i = 0; i < inputs.length; i++) {
 			// generate the random position
 			int randomPosition = rgen.nextInt(inputs.length);
-			
+
 			// switch to elements in the inputs[][] array
 			double[] temp = inputs[i];
 			inputs[i] = inputs[randomPosition];
 			inputs[randomPosition] = temp;
-			
-			// switch two elements in the outputs[][] array (with the same indices of the switched elements in the inputs[][] array)
+
+			// switch two elements in the outputs[][] array (with the same indices of the
+			// switched elements in the inputs[][] array)
 			temp = outputs[i];
 			outputs[i] = outputs[randomPosition];
 			outputs[randomPosition] = temp;
@@ -471,7 +473,7 @@ public class ANN {
 	public void learn(double[][] givenInputs, double[][] desiredOutputs, int dataSetSize) {
 		// randomize the testing data before passing it into the ANN
 		shuffleInputsAndOutputs(givenInputs, desiredOutputs);
-		
+
 		// repeat the learning process with the training set data for the number of
 		// data points in the data set
 		for (int i = 0; i < dataSetSize; i++) {
@@ -631,6 +633,7 @@ public class ANN {
 	 * =============================================================================
 	 */
 
+	// a method I use sometimes when debugging
 	public void test(double[] arr) {
 		normalize(arr);
 		denormalize(arr);
