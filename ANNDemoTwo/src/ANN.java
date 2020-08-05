@@ -416,22 +416,22 @@ public class ANN {
 	}
 
 	// a method to calculate and return the error of a neuron in the output layer
-	private double outputNeuronError(double expectedOutput, double nonSigmoidedActualOutput, double inputNode) {
+	private double outputNeuronError(double expectedOutput, double nonSigmoidedActualOutput) {
 //		System.out.println("===================================================");
 //		System.out.println("expectedOutput = " + expectedOutput);
 //		System.out.println("nonSigmoidedActualOutput = " + nonSigmoidedActualOutput);
 //		System.out.println("sigmoid = " + sigmoid(nonSigmoidedActualOutput));
 //		System.out.println("sigmoidDerivative = " + sigmoidDerivative(nonSigmoidedActualOutput));
 //		System.out.println("===================================================");
-		return (expectedOutput - sigmoid(nonSigmoidedActualOutput)) * inputNode;
-		// * sigmoidDerivative(nonSigmoidedActualOutput)
+		return (expectedOutput - sigmoid(nonSigmoidedActualOutput));
+		// * sigmoidDerivative(nonSigmoidedActualOutput) * inputNode
 	}
 
 	// a method to calculate and return the error of a neuron in a hidden layer
-	private double hiddenNeuronError(double weightFromOutputNeuron, double nonSigmoidedActualOutput, double inputNode,
+	private double hiddenNeuronError(double weightFromOutputNeuron, double nonSigmoidedActualOutput,
 			double errorFromOutputNeuron) {
-		return weightFromOutputNeuron * inputNode * errorFromOutputNeuron;
-		// * sigmoidDerivative(nonSigmoidedActualOutput)
+		return weightFromOutputNeuron * errorFromOutputNeuron;
+		// * sigmoidDerivative(nonSigmoidedActualOutput) * inputNode
 	}
 
 	// a method to copy over weights from the new arrays to the proper weight arrays
@@ -536,15 +536,14 @@ public class ANN {
 					}
 
 					// store the error in the outputLayerError[] array to be used later
-					outputLayerError[k] = outputNeuronError(desiredOutputs[i][k], sigmoidInverse(actualOutputs[k]),
-							previousLayerNode);
+					outputLayerError[k] = outputNeuronError(desiredOutputs[i][k], sigmoidInverse(actualOutputs[k]));
 
 //					System.out.println("outputLayerError[" + k + "] = " + outputLayerError[k]);
 
 					// the following will sometimes be a positive adjustment and sometimes a
 					// negative adjustment
-					newWeightsAfterLayerTwo[j][k] = weightsAfterLayerTwo[j][k]
-							+ (Math.abs(weightsAfterLayerTwo[j][k]) * this.learningRate * outputLayerError[k]);
+					newWeightsAfterLayerTwo[j][k] = weightsAfterLayerTwo[j][k] + (weightsAfterLayerTwo[j][k]
+							* this.learningRate * previousLayerNode * outputLayerError[k]);
 
 					// make sure that the new weight stays on the interval [-1.0, 1.0]
 					if (newWeightsAfterLayerTwo[j][k] > 1.0) {
@@ -570,12 +569,14 @@ public class ANN {
 					// store the error to be used later
 					for (int x = 0; x < this.outputLayerSize; x++) {
 						hiddenLayerTwoError[k] += hiddenNeuronError(this.weightsAfterLayerTwo[k][x],
-								sigmoidInverse(this.hiddenLayerTwoNodes[k]), previousLayerNode, outputLayerError[x]);
+								sigmoidInverse(this.hiddenLayerTwoNodes[k]), outputLayerError[x]);
 					}
 
+//					System.out.println("hiddenLayerTwoError[" + k + "] = " + hiddenLayerTwoError[k]);
+
 					// adjust the weight
-					newWeightsAfterLayerOne[j][k] = weightsAfterLayerOne[j][k]
-							+ (Math.abs(weightsAfterLayerOne[j][k]) * this.learningRate * hiddenLayerTwoError[k]);
+					newWeightsAfterLayerOne[j][k] = weightsAfterLayerOne[j][k] + (weightsAfterLayerOne[j][k]
+							* this.learningRate * previousLayerNode * hiddenLayerTwoError[k]);
 
 					// make sure that the new weight stays on the interval [-1.0, 1.0]
 					if (newWeightsAfterLayerOne[j][k] > 1.0) {
@@ -604,12 +605,14 @@ public class ANN {
 						// double weightFromOutputNeuron, double nonSigmoidedActualOutput, double
 						// inputNode, double errorFromOutputNeuron
 						hiddenLayerOneError[k] += hiddenNeuronError(this.weightsAfterLayerOne[k][x],
-								sigmoidInverse(this.hiddenLayerOneNodes[k]), previousLayerNode, hiddenLayerTwoError[x]);
+								sigmoidInverse(this.hiddenLayerOneNodes[k]), hiddenLayerTwoError[x]);
 					}
 
+//					System.out.println("hiddenLayerOneError[" + k + "] = " + hiddenLayerOneError[k]);
+
 					// adjust the weight
-					newWeightsAfterInputLayer[j][k] = weightsAfterInputLayer[j][k]
-							+ (Math.abs(weightsAfterInputLayer[j][k]) * this.learningRate * hiddenLayerOneError[k]);
+					newWeightsAfterInputLayer[j][k] = weightsAfterInputLayer[j][k] + (weightsAfterInputLayer[j][k]
+							* this.learningRate * previousLayerNode * hiddenLayerOneError[k]);
 
 					// make sure that the new weight stays on the interval [-1.0, 1.0]
 					if (newWeightsAfterInputLayer[j][k] > 1.0) {

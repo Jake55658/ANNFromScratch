@@ -17,8 +17,8 @@ public class Caller {
 		boolean learn = true;
 		int minLearningInputAndOutput = -10000;
 		int maxLearningInputAndOutput = 10000;
-		int dataSetSize = 10;
-		int epochs = 1;
+		int dataSetSize = 20;
+		int epochs = 3;
 		boolean save = true;
 		boolean test = true;
 		int minTestInputs = -10000;
