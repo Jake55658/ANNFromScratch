@@ -13,20 +13,23 @@ public class Caller {
 		// initializing values
 		int minInputAndOutput = -10000;
 		int maxInputAndOutput = 10000;
+		// set to either "Sigmoid", "ReLU", or "Linear"
+		String activationFunction = "Linear";
 		boolean readSaveData = true;
 		boolean learn = true;
 		int minLearningInputAndOutput = -10000;
 		int maxLearningInputAndOutput = 10000;
-		int dataSetSize = 20;
-		int epochs = 3;
+		int dataSetSize = 200;
+		int epochs = 500;
 		boolean save = true;
 		boolean test = true;
 		int minTestInputs = -10000;
 		int maxTestInputs = 10000;
 		int numTestInputs = 10;
-
+		
 		// an instance of the ANN class (from the ANN.java file)
-		ANN firstANN = new ANN(1, 20, 20, 1, minInputAndOutput, maxInputAndOutput, readSaveData, firstANNSaveDataLocation);
+		ANN firstANN = new ANN(1, 5, 5, 1, minInputAndOutput, maxInputAndOutput, readSaveData,
+				firstANNSaveDataLocation, activationFunction);
 
 		// the learning
 		trainANN(learn, dataSetSize, epochs, minLearningInputAndOutput, maxLearningInputAndOutput, firstANN);
@@ -39,8 +42,16 @@ public class Caller {
 	}
 
 	// a method for the function that the ANN is trying to approximate
-	private static double function(double x) {
+	private static double functionOne(double x) {
 		return x;
+	}
+
+	private static double functionTwo(double x) {
+		if (x > 0) {
+			return 1;
+		} else {
+			return 0;
+		}
 	}
 
 	// a method for assigning inputs and outputs
@@ -58,7 +69,16 @@ public class Caller {
 	private static double[][] assignOutputsForOneInputOneOutputFunctions(double[][] inputs) {
 		double[][] outputs = new double[inputs.length][1];
 		for (int i = 0; i < inputs.length; i++) {
-			outputs[i][0] = function(inputs[i][0]);
+			outputs[i][0] = functionOne(inputs[i][0]);
+		}
+		return outputs;
+	}
+
+	private static double[][] assignOutputsForOneInputTwoOutputFunctions(double[][] inputs) {
+		double[][] outputs = new double[inputs.length][2];
+		for (int i = 0; i < inputs.length; i++) {
+			outputs[i][0] = functionTwo(inputs[i][0]);
+			outputs[i][1] = functionTwo(inputs[i][0]);
 		}
 		return outputs;
 	}
@@ -76,6 +96,7 @@ public class Caller {
 				System.out.println("===================================");
 				System.out.println("inputs[" + i + "][0] = " + inputs[i][0]);
 				System.out.println("outputs[" + i + "][0] = " + outputs[i][0]);
+//				System.out.println("outputs[" + i + "][1] = " + outputs[i][1]);
 				System.out.println("===================================");
 			}
 		}
@@ -87,14 +108,14 @@ public class Caller {
 			// generate the test data
 			double[][] givenInputs = assignInputsForOneInputOneOutputFunctions(dataSetSize, min, max);
 			double[][] desiredOutputs = assignOutputsForOneInputOneOutputFunctions(givenInputs);
-			
+
 			// train the ANN
 			for (int i = 0; i < epochs; i++) {
 				ANN.learn(givenInputs, desiredOutputs, dataSetSize);
 			}
 		}
 	}
-	
+
 	// a method for saving the ANN data
 	private static void saveANN(boolean save, ANN ANN, String saveDataLocation) throws IOException {
 		if (save) {

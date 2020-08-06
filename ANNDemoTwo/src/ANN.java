@@ -35,7 +35,7 @@ public class ANN {
 
 	// variables to keep track of normalization and denormalization
 	double min, max;
-	double normalizationRate = 0.9;
+	double normalizationRate = 1;
 
 	// variables to keep track of datasets of inputs and outputs for training
 //	double[] givenInputs, desiredOutputs;
@@ -46,7 +46,16 @@ public class ANN {
 	 * this variable will be set to 0.1 by default, but can be changed if the client
 	 * wishes
 	 */
-	double learningRate = 0.1;
+	double learningRate = 0.01;
+
+	// if I want to keep the weights on [-1.0, 1.0]
+	boolean bindWeights = true;
+
+	// what I want the activation function to be
+	String activationFunction;
+
+	// if the activation function is "Linear", what do I want the slope to be
+	double linearSlope = 10.0;
 
 	// private methods for changing the layers
 	private void changeInputLayerSize(int newInputLayerSize) {
@@ -213,7 +222,7 @@ public class ANN {
 
 	public ANN(int inputLayerSizeFromClient, int hiddenLayerOneSizeFromClient, int hiddenLayerTwoSizeFromClient,
 			int outputLayerSizeFromClient, double minFromClient, double maxFromClient, boolean readValuesFromSaveFiles,
-			String saveFolder) {
+			String saveFolder, String activationFunctionFromClient) {
 		// if we want to read the ANN from the save files (for the settings)
 		if (readValuesFromSaveFiles) {
 			// reading the settings
@@ -229,6 +238,9 @@ public class ANN {
 			// changes the min and max for normalization and denormalization
 			changeParameters(minFromClient, maxFromClient);
 		}
+		// specifies our activation function
+		this.activationFunction = activationFunctionFromClient;
+
 		// calls all the methods for changing the size of the layers. They will throw
 		// exceptions if illegal values are attempted
 		changeInputLayerSize(inputLayerSizeFromClient);
@@ -310,6 +322,20 @@ public class ANN {
 		return (1.0 / (1.0 + (1.0 / Math.exp(x))));
 	}
 
+	// the ReLU method
+	private double ReLU(double x) {
+		if (x > 0.0) {
+			return x;
+		} else {
+			return 0.0;
+		}
+	}
+
+	// a plain, linear activation function
+	private double linear(double x) {
+		return x;
+	}
+
 	// the method that will calculate a single layer of node values
 	private void layerCalculate(double[] inputs, double[] targets, double[][] weights) {
 		for (int i = 0; i < targets.length; i++) {
@@ -320,9 +346,15 @@ public class ANN {
 			}
 			// add the bias to "sum"
 			sum += this.bias * weights[inputs.length][i];
-			// reasign the "sum" variable as the sigmoid of "sum" if it isn't the output
-			// layer
-			sum = sigmoid(sum);
+			// reasign the "sum" variable as the activation function of "sum"
+			if (this.activationFunction == "Sigmoid") {
+				sum = sigmoid(sum);
+			} else if (this.activationFunction == "ReLU") {
+				sum = ReLU(sum);
+			} else if (this.activationFunction == "Linear") {
+				sum = linear(sum);
+			}
+
 			// assign the output to the target array after passing "sum" through the sigmoid
 			// method
 			targets[i] = sum;
@@ -370,11 +402,10 @@ public class ANN {
 			// desired outputs (but still in normalized form)
 
 			// denormalize the outputs
-//			denormalize(outputs);
-
-//			System.out.println("=====================================================");
-//			System.out.println("the outputs array after calculation" + arrToString(outputs));
-//			System.out.println("=====================================================");
+			denormalize(outputs);
+			
+			// denormalize the inputs to make it easier to read the test data
+			denormalize(inputs);
 		}
 	}
 
@@ -415,21 +446,43 @@ public class ANN {
 		return sigmoid(x) * (1.0 - sigmoid(x));
 	}
 
+	// the derivative of ReLU
+	// ReLU breaks down when nodes start having negative outputs
+	private double ReLUDerivative(double x) {
+		if (x > 0) {
+			return 1;
+		} else {
+			return 0;
+		}
+	}
+
+	// the derivative of the plain, linear activation function
+	private double linearDerivative(double x) {
+		return this.linearSlope;
+	}
+
 	// a method to calculate and return the error of a neuron in the output layer
-	private double outputNeuronError(double expectedOutput, double nonSigmoidedActualOutput) {
+	private double outputNeuronError(double expectedOutput, double actualOutput) {
 //		System.out.println("===================================================");
 //		System.out.println("expectedOutput = " + expectedOutput);
 //		System.out.println("nonSigmoidedActualOutput = " + nonSigmoidedActualOutput);
 //		System.out.println("sigmoid = " + sigmoid(nonSigmoidedActualOutput));
 //		System.out.println("sigmoidDerivative = " + sigmoidDerivative(nonSigmoidedActualOutput));
 //		System.out.println("===================================================");
-		return (expectedOutput - sigmoid(nonSigmoidedActualOutput));
+		double error = 0.0;
+		if (this.activationFunction == "Sigmoid") {
+			error = (actualOutput - expectedOutput) * sigmoidDerivative(sigmoidInverse(actualOutput));
+		} else if (this.activationFunction == "ReLU") {
+			error = (actualOutput - expectedOutput) * ReLUDerivative(actualOutput);
+		} else if (this.activationFunction == "Linear") {
+			error = (actualOutput - expectedOutput) * linearDerivative(actualOutput);
+		}
+		return error;
 		// * sigmoidDerivative(nonSigmoidedActualOutput) * inputNode
 	}
 
 	// a method to calculate and return the error of a neuron in a hidden layer
-	private double hiddenNeuronError(double weightFromOutputNeuron, double nonSigmoidedActualOutput,
-			double errorFromOutputNeuron) {
+	private double hiddenNeuronError(double weightFromOutputNeuron, double errorFromOutputNeuron) {
 		return weightFromOutputNeuron * errorFromOutputNeuron;
 		// * sigmoidDerivative(nonSigmoidedActualOutput) * inputNode
 	}
@@ -469,10 +522,48 @@ public class ANN {
 		}
 	}
 
+	// a method to initialize the deltaWeight[][] arrays to all zero
+	private void initializeDoubleArrayToZero(double[][] arr) {
+		for (int i = 0; i < arr.length; i++) {
+			for (int j = 0; j < arr[i].length; j++) {
+				arr[i][j] = 0;
+			}
+		}
+	}
+
+	// a method to average the deltas for the deltaWeight[][] arrays
+	private void averageDeltas(double[][] arr, double numElements) {
+		for (int i = 0; i < arr.length; i++) {
+			for (int j = 0; j < arr[i].length; j++) {
+				arr[i][j] /= numElements;
+				System.out.println("deltaWeight[" + i + "][" + j + "] = " + arr[i][j]);
+			}
+		}
+	}
+
+	// a method to apply the deltas to the weights
+	private void applyDeltas(double[][] weights, double[][] deltas) {
+		for (int i = 0; i < weights.length; i++) {
+			for (int j = 0; j < weights[i].length; j++) {
+				weights[i][j] -= deltas[i][j];
+			}
+		}
+	}
+
 	// the method to actually train the ANN
 	public void learn(double[][] givenInputs, double[][] desiredOutputs, int dataSetSize) {
 		// randomize the testing data before passing it into the ANN
 		shuffleInputsAndOutputs(givenInputs, desiredOutputs);
+
+		// arrays to keep track of the new weights
+		double[][] deltaWeightsAfterLayerTwo = new double[this.weightsAfterLayerTwo.length][this.weightsAfterLayerTwo[0].length];
+		double[][] deltaWeightsAfterLayerOne = new double[this.weightsAfterLayerOne.length][this.weightsAfterLayerOne[0].length];
+		double[][] deltaWeightsAfterInputLayer = new double[this.weightsAfterInputLayer.length][this.weightsAfterInputLayer[0].length];
+
+		// turn all the deltaWeight[][] arrays to zero
+		initializeDoubleArrayToZero(deltaWeightsAfterLayerTwo);
+		initializeDoubleArrayToZero(deltaWeightsAfterLayerOne);
+		initializeDoubleArrayToZero(deltaWeightsAfterInputLayer);
 
 		// repeat the learning process with the training set data for the number of
 		// data points in the data set
@@ -509,10 +600,6 @@ public class ANN {
 			double[] hiddenLayerTwoError = new double[this.hiddenLayerTwoSize];
 			double[] hiddenLayerOneError = new double[this.hiddenLayerOneSize];
 
-			// arrays to keep track of the new weights
-			double[][] newWeightsAfterLayerTwo = new double[this.weightsAfterLayerTwo.length][this.weightsAfterLayerTwo[0].length];
-			double[][] newWeightsAfterLayerOne = new double[this.weightsAfterLayerOne.length][this.weightsAfterLayerOne[0].length];
-			double[][] newWeightsAfterInputLayer = new double[this.weightsAfterInputLayer.length][this.weightsAfterInputLayer[0].length];
 			/*
 			 * adjust the weights that lead to the output layer
 			 * 
@@ -536,21 +623,14 @@ public class ANN {
 					}
 
 					// store the error in the outputLayerError[] array to be used later
-					outputLayerError[k] = outputNeuronError(desiredOutputs[i][k], sigmoidInverse(actualOutputs[k]));
+					outputLayerError[k] = outputNeuronError(desiredOutputs[i][k], actualOutputs[k]);
 
 //					System.out.println("outputLayerError[" + k + "] = " + outputLayerError[k]);
 
 					// the following will sometimes be a positive adjustment and sometimes a
 					// negative adjustment
-					newWeightsAfterLayerTwo[j][k] = weightsAfterLayerTwo[j][k] + (weightsAfterLayerTwo[j][k]
-							* this.learningRate * previousLayerNode * outputLayerError[k]);
-
-					// make sure that the new weight stays on the interval [-1.0, 1.0]
-					if (newWeightsAfterLayerTwo[j][k] > 1.0) {
-						newWeightsAfterLayerTwo[j][k] = 1.0;
-					} else if (newWeightsAfterLayerTwo[j][k] < -1.0) {
-						newWeightsAfterLayerTwo[j][k] = -1.0;
-					}
+					deltaWeightsAfterLayerTwo[j][k] += this.learningRate * previousLayerNode * outputLayerError[k];
+					// weightsAfterLayerTwo[j][k] *
 				}
 			}
 			// adjust the weights that lead to the second hidden layer
@@ -569,21 +649,18 @@ public class ANN {
 					// store the error to be used later
 					for (int x = 0; x < this.outputLayerSize; x++) {
 						hiddenLayerTwoError[k] += hiddenNeuronError(this.weightsAfterLayerTwo[k][x],
-								sigmoidInverse(this.hiddenLayerTwoNodes[k]), outputLayerError[x]);
+								outputLayerError[x]);
+//						hiddenLayerTwoError[k] += hiddenNeuronError(this.weightsAfterLayerTwo[k][x], sigmoidInverse(this.hiddenLayerTwoNodes[k]), outputLayerError[x]);
 					}
+
+					// COMMENT OUT IF THIS DOESN'T WORK:
+//					hiddenLayerTwoError[k] *= sigmoidDerivative(sigmoidInverse(this.hiddenLayerTwoNodes[k]));
 
 //					System.out.println("hiddenLayerTwoError[" + k + "] = " + hiddenLayerTwoError[k]);
 
 					// adjust the weight
-					newWeightsAfterLayerOne[j][k] = weightsAfterLayerOne[j][k] + (weightsAfterLayerOne[j][k]
-							* this.learningRate * previousLayerNode * hiddenLayerTwoError[k]);
-
-					// make sure that the new weight stays on the interval [-1.0, 1.0]
-					if (newWeightsAfterLayerOne[j][k] > 1.0) {
-						newWeightsAfterLayerOne[j][k] = 1.0;
-					} else if (newWeightsAfterLayerOne[j][k] < -1.0) {
-						newWeightsAfterLayerOne[j][k] = -1.0;
-					}
+					deltaWeightsAfterLayerOne[j][k] += this.learningRate * previousLayerNode * hiddenLayerTwoError[k];
+					// * weightsAfterLayerOne[j][k]
 				}
 			}
 			// adjust the weights that lead to the first hidden layer
@@ -602,32 +679,34 @@ public class ANN {
 					// store the error (this time it won't be used later, but maybe in future
 					// versions it will and this looks cleaner)
 					for (int x = 0; x < this.hiddenLayerTwoSize; x++) {
-						// double weightFromOutputNeuron, double nonSigmoidedActualOutput, double
-						// inputNode, double errorFromOutputNeuron
+//						hiddenLayerOneError[k] += hiddenNeuronError(this.weightsAfterLayerOne[k][x], sigmoidInverse(this.hiddenLayerOneNodes[k]), hiddenLayerTwoError[x]);
 						hiddenLayerOneError[k] += hiddenNeuronError(this.weightsAfterLayerOne[k][x],
-								sigmoidInverse(this.hiddenLayerOneNodes[k]), hiddenLayerTwoError[x]);
+								hiddenLayerTwoError[x]);
 					}
+
+					// COMMENT OUT IF THIS DOESN'T WORK:
+//					hiddenLayerOneError[k] *= sigmoidDerivative(sigmoidInverse(this.hiddenLayerOneNodes[k]));
 
 //					System.out.println("hiddenLayerOneError[" + k + "] = " + hiddenLayerOneError[k]);
 
 					// adjust the weight
-					newWeightsAfterInputLayer[j][k] = weightsAfterInputLayer[j][k] + (weightsAfterInputLayer[j][k]
-							* this.learningRate * previousLayerNode * hiddenLayerOneError[k]);
-
-					// make sure that the new weight stays on the interval [-1.0, 1.0]
-					if (newWeightsAfterInputLayer[j][k] > 1.0) {
-						newWeightsAfterInputLayer[j][k] = 1.0;
-					} else if (newWeightsAfterInputLayer[j][k] < -1.0) {
-						newWeightsAfterInputLayer[j][k] = -1.0;
-					}
+					deltaWeightsAfterInputLayer[j][k] += this.learningRate * previousLayerNode * hiddenLayerOneError[k];
+					// * weightsAfterInputLayer[j][k]
 				}
 			}
 
 			// copy all the new weights into the arrays for the old weights
-			copyWeights(newWeightsAfterLayerTwo, this.weightsAfterLayerTwo);
-			copyWeights(newWeightsAfterLayerOne, this.weightsAfterLayerOne);
-			copyWeights(newWeightsAfterInputLayer, this.weightsAfterInputLayer);
+//			copyWeights(newWeightsAfterLayerTwo, this.weightsAfterLayerTwo);
+//			copyWeights(newWeightsAfterLayerOne, this.weightsAfterLayerOne);
+//			copyWeights(newWeightsAfterInputLayer, this.weightsAfterInputLayer);
 		}
+		averageDeltas(deltaWeightsAfterLayerTwo, dataSetSize);
+		averageDeltas(deltaWeightsAfterLayerOne, dataSetSize);
+		averageDeltas(deltaWeightsAfterInputLayer, dataSetSize);
+
+		applyDeltas(this.weightsAfterLayerTwo, deltaWeightsAfterLayerTwo);
+		applyDeltas(this.weightsAfterLayerOne, deltaWeightsAfterLayerOne);
+		applyDeltas(this.weightsAfterInputLayer, deltaWeightsAfterInputLayer);
 	}
 
 	/*
