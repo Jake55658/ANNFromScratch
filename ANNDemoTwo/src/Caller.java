@@ -8,31 +8,36 @@ public class Caller {
 		env environment = new env();
 
 		// a String variable to hold the folder location for the ANN save files
-		String firstANNSaveDataLocation = environment.getLocation() + "\\src\\ANNData\\firstANN\\";
+		String firstANNSaveDataLocation = environment.getLocation() + "\\src\\ANNData\\secondANN\\";
 
 		// initializing values
-		int minInputAndOutput = -10000;
-		int maxInputAndOutput = 10000;
+		int minInput = -10000;
+		int minOutput = 0;
+		int maxInput = 10000;
+		int maxOutput = 1;
 		// set to either "Sigmoid", "ReLU", or "Linear"
 		String activationFunction = "Linear";
+		boolean binaryOutputs = true;
 		boolean readSaveData = true;
 		boolean learn = true;
-		int minLearningInputAndOutput = -10000;
-		int maxLearningInputAndOutput = 10000;
-		int dataSetSize = 200;
-		int epochs = 500;
+		int minLearningInput = -10000;
+		int minLearningOutput = 0;
+		int maxLearningInput = 10000;
+		int maxLearningOutput = 1;
+		int dataSetSize = 100;
+		int epochs = 50;
 		boolean save = true;
 		boolean test = true;
 		int minTestInputs = -10000;
 		int maxTestInputs = 10000;
 		int numTestInputs = 10;
-		
+
 		// an instance of the ANN class (from the ANN.java file)
-		ANN firstANN = new ANN(1, 5, 5, 1, minInputAndOutput, maxInputAndOutput, readSaveData,
-				firstANNSaveDataLocation, activationFunction);
+		ANN firstANN = new ANN(1, 5, 5, 2, minInput, maxInput, minOutput, maxOutput, readSaveData,
+				firstANNSaveDataLocation, activationFunction, binaryOutputs);
 
 		// the learning
-		trainANN(learn, dataSetSize, epochs, minLearningInputAndOutput, maxLearningInputAndOutput, firstANN);
+		trainANN(learn, dataSetSize, epochs, minLearningInput, maxLearningInput, firstANN);
 
 		// save the ANN
 		saveANN(save, firstANN, firstANNSaveDataLocation);
@@ -46,16 +51,18 @@ public class Caller {
 		return x;
 	}
 
-	private static double functionTwo(double x) {
-		if (x > 0) {
-			return 1;
+	private static void functionTwo(double x, double[] outputNodes) {
+		if (x >= 0) {
+			outputNodes[0] = 1;
+			outputNodes[1] = 0;
 		} else {
-			return 0;
+			outputNodes[0] = 0;
+			outputNodes[1] = 1;
 		}
 	}
 
 	// a method for assigning inputs and outputs
-	private static double[][] assignInputsForOneInputOneOutputFunctions(int numInputs, int minInput, int maxInput) {
+	private static double[][] assignInputsForOneInputFunctions(int numInputs, int minInput, int maxInput) {
 		double[][] inputs = new double[numInputs][1];
 		double value = minInput + ((maxInput - minInput) / (numInputs + 1.0));
 		for (int i = 0; i < numInputs; i++) {
@@ -77,8 +84,7 @@ public class Caller {
 	private static double[][] assignOutputsForOneInputTwoOutputFunctions(double[][] inputs) {
 		double[][] outputs = new double[inputs.length][2];
 		for (int i = 0; i < inputs.length; i++) {
-			outputs[i][0] = functionTwo(inputs[i][0]);
-			outputs[i][1] = functionTwo(inputs[i][0]);
+			functionTwo(inputs[i][0], outputs[i]);
 		}
 		return outputs;
 	}
@@ -87,8 +93,8 @@ public class Caller {
 	private static void testANN(boolean test, ANN ANN, int numTestInputs, int minInput, int maxInput) {
 		if (test) {
 			// assign all the input values and the input and output arrays
-			double[][] inputs = assignInputsForOneInputOneOutputFunctions(numTestInputs, minInput, maxInput);
-			double[][] outputs = assignOutputsForOneInputOneOutputFunctions(inputs);
+			double[][] inputs = assignInputsForOneInputFunctions(numTestInputs, minInput, maxInput);
+			double[][] outputs = new double[inputs.length][2];
 
 			// do all the calculations and print them
 			for (int i = 0; i < inputs.length; i++) {
@@ -96,7 +102,7 @@ public class Caller {
 				System.out.println("===================================");
 				System.out.println("inputs[" + i + "][0] = " + inputs[i][0]);
 				System.out.println("outputs[" + i + "][0] = " + outputs[i][0]);
-//				System.out.println("outputs[" + i + "][1] = " + outputs[i][1]);
+				System.out.println("outputs[" + i + "][1] = " + outputs[i][1]);
 				System.out.println("===================================");
 			}
 		}
@@ -106,8 +112,8 @@ public class Caller {
 	private static void trainANN(boolean learn, int dataSetSize, int epochs, int min, int max, ANN ANN) {
 		if (learn) {
 			// generate the test data
-			double[][] givenInputs = assignInputsForOneInputOneOutputFunctions(dataSetSize, min, max);
-			double[][] desiredOutputs = assignOutputsForOneInputOneOutputFunctions(givenInputs);
+			double[][] givenInputs = assignInputsForOneInputFunctions(dataSetSize, min, max);
+			double[][] desiredOutputs = assignOutputsForOneInputTwoOutputFunctions(givenInputs);
 
 			// train the ANN
 			for (int i = 0; i < epochs; i++) {

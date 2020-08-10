@@ -24,7 +24,7 @@ public class ANN {
 	// initializing the layers
 	int inputLayerSize, hiddenLayerOneSize, hiddenLayerTwoSize, outputLayerSize;
 	// initializing the biases
-	double bias = 1.0;
+	double bias = 1;
 	// initializing the weights
 	double[][] weightsAfterInputLayer, weightsAfterLayerOne, weightsAfterLayerTwo;
 	// initializing the nodes
@@ -34,7 +34,7 @@ public class ANN {
 	boolean normalized = false;
 
 	// variables to keep track of normalization and denormalization
-	double min, max;
+	double minInput, maxInput, minOutput, maxOutput;
 	double normalizationRate = 1;
 
 	// variables to keep track of datasets of inputs and outputs for training
@@ -55,7 +55,10 @@ public class ANN {
 	String activationFunction;
 
 	// if the activation function is "Linear", what do I want the slope to be
-	double linearSlope = 10.0;
+	double linearSlope = 1.0;
+	
+	// if we want binary outputs or not
+	boolean binaryOutputs = false;
 
 	// private methods for changing the layers
 	private void changeInputLayerSize(int newInputLayerSize) {
@@ -90,14 +93,25 @@ public class ANN {
 		}
 	}
 
-	// a private method to change the min and max
-	private void changeParameters(double min, double max) {
+	// a private method to change the input min and max
+	private void changeInputParameters(double min, double max) {
 		// if min > max (min should always be less than max)
 		if (min > max) {
 			throw new ArithmeticException("min must always be less than max");
 		} else {
-			this.min = min;
-			this.max = max;
+			this.minInput = min;
+			this.maxInput = max;
+		}
+	}
+
+	// a private method to change the output min and max
+	private void changeOutputParameters(double min, double max) {
+		// if min > max (min should always be less than max)
+		if (min > max) {
+			throw new ArithmeticException("min must always be less than max");
+		} else {
+			this.minOutput = min;
+			this.maxOutput = max;
 		}
 	}
 
@@ -187,10 +201,10 @@ public class ANN {
 		writer.println(String.valueOf(hiddenLayerOneSize));
 		writer.println(String.valueOf(hiddenLayerTwoSize));
 		writer.println(String.valueOf(outputLayerSize));
-		writer.println(String.valueOf(min));
-		writer.println(String.valueOf(max));
-		writer.println(String.valueOf(min));
-		writer.println(String.valueOf(max));
+		writer.println(String.valueOf(minInput));
+		writer.println(String.valueOf(maxInput));
+		writer.println(String.valueOf(minOutput));
+		writer.println(String.valueOf(maxOutput));
 		writer.close();
 
 		// write all the values for the weights for the layers
@@ -221,8 +235,9 @@ public class ANN {
 	}
 
 	public ANN(int inputLayerSizeFromClient, int hiddenLayerOneSizeFromClient, int hiddenLayerTwoSizeFromClient,
-			int outputLayerSizeFromClient, double minFromClient, double maxFromClient, boolean readValuesFromSaveFiles,
-			String saveFolder, String activationFunctionFromClient) {
+			int outputLayerSizeFromClient, double minInputFromClient, double maxInputFromClient,
+			double minOutputFromClient, double maxOutputFromClient, boolean readValuesFromSaveFiles, String saveFolder,
+			String activationFunctionFromClient, boolean binaryOutputsFromClient) {
 		// if we want to read the ANN from the save files (for the settings)
 		if (readValuesFromSaveFiles) {
 			// reading the settings
@@ -231,13 +246,19 @@ public class ANN {
 			this.hiddenLayerOneSize = Integer.parseInt(fileScanner1.nextLine());
 			this.hiddenLayerTwoSize = Integer.parseInt(fileScanner1.nextLine());
 			this.outputLayerSize = Integer.parseInt(fileScanner1.nextLine());
-			this.min = Double.parseDouble(fileScanner1.nextLine());
-			this.max = Double.parseDouble(fileScanner1.nextLine());
+			this.minInput = Double.parseDouble(fileScanner1.nextLine());
+			this.maxInput = Double.parseDouble(fileScanner1.nextLine());
+			this.minOutput = Double.parseDouble(fileScanner1.nextLine());
+			this.maxOutput = Double.parseDouble(fileScanner1.nextLine());
 			fileScanner1.close();
 		} else {
 			// changes the min and max for normalization and denormalization
-			changeParameters(minFromClient, maxFromClient);
+			changeInputParameters(minInputFromClient, maxInputFromClient);
+			changeOutputParameters(minOutputFromClient, maxOutputFromClient);
 		}
+		// specifies the type of outputs that we want
+		this.binaryOutputs = binaryOutputsFromClient;
+		
 		// specifies our activation function
 		this.activationFunction = activationFunctionFromClient;
 
@@ -362,18 +383,18 @@ public class ANN {
 	}
 
 	// the method that will normalize the input array
-	private void normalize(double[] arr) {
+	private void normalize(double[] arr, double normMin, double normMax) {
 		// do the normalization on each element of arr[]
 		for (int i = 0; i < arr.length; i++) {
-			arr[i] = ((((arr[i] - this.max) - this.min) / (this.max - this.min)) * this.normalizationRate) + 0.5;
+			arr[i] = ((((arr[i] - normMax) - normMin) / (normMax - normMin)) * this.normalizationRate) + 0.5;
 		}
 	}
 
 	// the method that will denormalize the output array
-	private void denormalize(double[] arr) {
+	private void denormalize(double[] arr, double denormMin, double denormMax) {
 		// do the denormalization on each element of arr[]
 		for (int i = 0; i < arr.length; i++) {
-			arr[i] = (((arr[i] - 0.5) * (this.max - this.min)) / this.normalizationRate) + this.min + this.max;
+			arr[i] = (((arr[i] - 0.5) * (denormMax - denormMin)) / this.normalizationRate) + denormMin + denormMax;
 		}
 	}
 
@@ -388,7 +409,7 @@ public class ANN {
 			throw new ArithmeticException("You have not given the correct number of inputs and/or outputs");
 		} else {
 			// normalize the inputs
-			normalize(inputs);
+			normalize(inputs, this.minInput, this.maxInput);
 
 			// this will change all the values in "hiddenLayerOneNodes" to the calculated
 			// values
@@ -401,11 +422,13 @@ public class ANN {
 			// by this part in the code, the outputs[] array should have been changed to the
 			// desired outputs (but still in normalized form)
 
-			// denormalize the outputs
-			denormalize(outputs);
-			
+			// denormalize the outputs (if we are not using a sigmoid activation function)
+			if (!(binaryOutputs)) {
+				denormalize(outputs, minOutput, maxOutput);
+			}
+
 			// denormalize the inputs to make it easier to read the test data
-			denormalize(inputs);
+			denormalize(inputs, minInput, maxInput);
 		}
 	}
 
@@ -471,7 +494,8 @@ public class ANN {
 //		System.out.println("===================================================");
 		double error = 0.0;
 		if (this.activationFunction == "Sigmoid") {
-			error = (actualOutput - expectedOutput) * sigmoidDerivative(sigmoidInverse(actualOutput));
+			error = (actualOutput - expectedOutput);
+			// * sigmoidDerivative(sigmoidInverse(actualOutput));
 		} else if (this.activationFunction == "ReLU") {
 			error = (actualOutput - expectedOutput) * ReLUDerivative(actualOutput);
 		} else if (this.activationFunction == "Linear") {
@@ -536,7 +560,7 @@ public class ANN {
 		for (int i = 0; i < arr.length; i++) {
 			for (int j = 0; j < arr[i].length; j++) {
 				arr[i][j] /= numElements;
-				System.out.println("deltaWeight[" + i + "][" + j + "] = " + arr[i][j]);
+//				System.out.println("deltaWeight[" + i + "][" + j + "] = " + arr[i][j]);
 			}
 		}
 	}
@@ -573,10 +597,12 @@ public class ANN {
 
 			// normalize the desiredOutputs since we will need them normalized to calculate
 			// error
-			normalize(desiredOutputs[i]);
+			if (!(this.binaryOutputs)) {
+				normalize(desiredOutputs[i], this.minOutput, this.maxOutput);
+			}
 
 			// normalize the inputs
-			normalize(givenInputs[i]);
+			normalize(givenInputs[i], this.minInput, this.maxInput);
 
 			// this will change all the values in "hiddenLayerOneNodes" to the calculated
 			// values
@@ -625,12 +651,18 @@ public class ANN {
 					// store the error in the outputLayerError[] array to be used later
 					outputLayerError[k] = outputNeuronError(desiredOutputs[i][k], actualOutputs[k]);
 
-//					System.out.println("outputLayerError[" + k + "] = " + outputLayerError[k]);
-
 					// the following will sometimes be a positive adjustment and sometimes a
 					// negative adjustment
 					deltaWeightsAfterLayerTwo[j][k] += this.learningRate * previousLayerNode * outputLayerError[k];
 					// weightsAfterLayerTwo[j][k] *
+//					System.out.println("k = " + k);
+					if ((actualOutputs[k] < 0.5) && (desiredOutputs[i][k] == 1)) {
+						System.out.println("desiredOutputs[" + i + "][" + k + "] = " + desiredOutputs[i][k]);
+						System.out.println("actualOutputs[" + k + "] = " + actualOutputs[k]);
+						System.out.println("outputLayerError[" + k + "] = " + outputLayerError[k]);
+//						System.out.println("deltaWeightsAfterLayerTwo[" + j + "][" + k + "] = " + deltaWeightsAfterLayerTwo[j][k]);
+					}
+
 				}
 			}
 			// adjust the weights that lead to the second hidden layer
@@ -717,7 +749,6 @@ public class ANN {
 
 	// a method I use sometimes when debugging
 	public void test(double[] arr) {
-		normalize(arr);
-		denormalize(arr);
+		System.out.println("test method");
 	}
 }
